@@ -4,7 +4,7 @@ import fontSculpt from "../assets/fonts/sculpture.typeface.json";
 import C from "cannon";
 
 const distance = 15;
-const totalMass = 1;
+// const totalMass = 1;
 
 export default class Renderer3D {
   constructor(dom) {
@@ -19,7 +19,7 @@ export default class Renderer3D {
     this.renderer.setClearColor(0x111111, 1);
     dom.appendChild(this.renderer.domElement);
 
-    this.textList = ["MESSAGE", "SIMPLE", "THREE", "REACT"];
+    this.textList = ["MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE", "MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE", "THREE", "REACT", "CANNON", "MESSAGE", "SIMPLE"];
 
     const aspect = this.width / this.height;
 
@@ -32,8 +32,9 @@ export default class Renderer3D {
       100
     );
 
-    this.camera.position.set(0, 0, 0);
-    this.time = 0;
+    this.camera.position.set(0, 0, 0)
+    this.camera.lookAt(new THREE.Vector3())
+    // this.time = 0;
 
     this.isPlaying = 0;
     this.mouse = { x: 0, y: 0 };
@@ -41,7 +42,7 @@ export default class Renderer3D {
     this.words = [];
 
     this.world = new C.World();
-    this.world.gravity.set(0, -50, 0);
+    this.world.gravity.set(0, -15, 0);
 
     this.addListeners();
     this.addObjects();
@@ -80,7 +81,7 @@ export default class Renderer3D {
 
     this.world.addContactMaterial(contactMaterial);
 
-    const color = 0x006699;
+    const color = 0xFFFFFF;
     const matLite = new THREE.MeshBasicMaterial({
       color: color,
       transparent: true,
@@ -91,20 +92,36 @@ export default class Renderer3D {
     const words = new THREE.Group();
     words.ground = new C.Body({
       mass: 0,
-      shape: new C.Box(new C.Vec3(100, 50, 10000)),
-      position: new C.Vec3(10, -59, -1000),
+      shape: new C.Box(new C.Vec3(100, 50, 20)),
+      position: new C.Vec3(10, -65, -10),
+      material: groundMat,
+    });
+
+    words.wallLeft = new C.Body({
+      mass: 0,
+      shape: new C.Box(new C.Vec3(10, 100, 20)),
+      position: new C.Vec3(-35, -59, -10),
+      material: groundMat,
+    });
+
+    words.wallRight = new C.Body({
+      mass: 0,
+      shape: new C.Box(new C.Vec3(10, 100, 20)),
+      position: new C.Vec3(35, -59, -10),
       material: groundMat,
     });
 
     this.world.addBody(words.ground);
+    this.world.addBody(words.wallLeft);
+    this.world.addBody(words.wallRight);
 
     for (let i = 0; i < this.textList.length; i++) {
       const message = this.textList[i];
 
       const geometry = new THREE.TextGeometry(message, {
         font: fontsss,
-        size: 3,
-        height: 1,
+        size: 2,
+        height: 50000,
         curveSegments: 24,
         bevelEnabled: false,
         bevelThickness: 0.9,
@@ -123,28 +140,29 @@ export default class Renderer3D {
 
       const text = new THREE.Mesh(geometry, matLite);
 
-      text.position.set(-20 + i * 6, i * 6, 0);
+      text.position.set(0, 0, 0);
       text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
 
-      const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
+      const box = new C.Box(new C.Vec3().copy(text.size).scale(0.6));
 
       text.body = new C.Body({
-        mass: 0.1,
-        position: new C.Vec3(-20 + i * 8, i * 6, 0),
+        mass: 100,
+        position: new C.Vec3(-4 + (-1)**i * 5, 6 * i, 0),
         material: letterMat,
       });
 
       const { center } = text.geometry.boundingSphere;
-
       text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
 
-      this.world.addBody(text.body);
       words.add(text);
+      this.world.addBody(text.body);
     }
+
+    // const axesHelper = new THREE.AxesHelper( 10 );
+    // this.scene.add( axesHelper );
 
     this.words.push(words);
     this.scene.add(words);
-    // this.setConstraints();
     // });
   };
 
@@ -162,8 +180,6 @@ export default class Renderer3D {
   render = () => {
     if (this.isPlaying) return;
 
-    this.time += 0.001;
-
     this.updatePhisics();
     this.world.step(1 / 60);
 
@@ -175,30 +191,16 @@ export default class Renderer3D {
     if (!this.words) return;
 
     this.words[0].children.forEach((word) => {
-      // console.log(word.position, word.quaternion);
       word.position.copy(word.body.position);
       word.quaternion.copy(word.body.quaternion);
+      // word.quaternion._z = 0;
+      // word.quaternion._w = 1; 
+      word.position.z = 0;
+      word.rotation._z = 0;
+      word.rotation._y = 0;
+      word.rotation._x = 0;
     });
   };
-
-  setConstraints() {
-    const arr = this.words[0].children;
-    for (let i = 0; i < arr.length; i++) {
-      const word = arr[i];
-      const nextLetter = i === arr.length - 1 ? null : arr[i + 1];
-
-      if (!nextLetter) continue;
-
-      const c = new C.ConeTwistConstraint(word.body, nextLetter.body, {
-        pivotA: new C.Vec3(word.size.x * 0.5, 0, 0),
-        pivotB: new C.Vec3(-word.size.x * 0.5, 0, 0),
-      });
-
-      c.collideConnected = true;
-
-      this.world.addConstraint(c);
-    }
-  }
 
   onResize = () => {
     this.width = window.innerWidth;
@@ -217,7 +219,7 @@ export default class Renderer3D {
   handleClick = () => {
     const value = this.textList.pop();
     this.textList.unshift(value);
-    console.log(this.words);
     this.words[0].children.pop();
+    this.world.bodies.pop()
   };
 }
