@@ -91,17 +91,15 @@ export default class Renderer3D {
     this.dom.addEventListener("click", this.handleClick);
     window.addEventListener("resize", this.onResize);
     this.controls.addEventListener("dragstart", (event) => {
-      this.draggingId = event.object.id;
+      this.draggingId = event.object.textId;
     });
-    this.controls.addEventListener("drag", (event) => {
-      console.log(event);
+    this.controls.addEventListener("drag", () => {
       this.updatePhisics();
       this.renderer.render(this.scene, this.camera);
     });
     this.controls.addEventListener("dragend", () => {
       this.draggingId = null;
     });
-    this.controls.activate();
   };
 
   mouseEvent = (e) => {
@@ -117,46 +115,43 @@ export default class Renderer3D {
 
   addObjects = () => {
     // const loader = new THREE.FontLoader();
-    const fontsss = new THREE.Font(fontSculpt);
     // loader.load(JSON.stringify(fontsss), (font) => {
 
-    const groundMat = new C.Material();
-    const letterMat = new C.Material();
+    this.groundMat = new C.Material();
+    this.letterMat = new C.Material();
 
-    const contactMaterial = new C.ContactMaterial(groundMat, letterMat, {
-      friction: 0.01,
-    });
+    const contactMaterial = new C.ContactMaterial(
+      this.groundMat,
+      this.letterMat,
+      {
+        friction: 0.01,
+      }
+    );
 
     this.world.addContactMaterial(contactMaterial);
 
     const color = 0xffffff;
-    const matLite = new THREE.MeshBasicMaterial({
-      color: color,
-      transparent: true,
-      opacity: 1,
-      side: THREE.DoubleSide,
-    });
 
     this.wordsGroup = new THREE.Group();
     this.wordsGroup.ground = new C.Body({
       mass: 0,
       shape: new C.Box(new C.Vec3(100, 50, 20)),
       position: new C.Vec3(10, -65, -10),
-      material: groundMat,
+      material: this.groundMat,
     });
 
     this.wordsGroup.wallLeft = new C.Body({
       mass: 0,
       shape: new C.Box(new C.Vec3(10, 100, 20)),
       position: new C.Vec3(-35, -59, -10),
-      material: groundMat,
+      material: this.groundMat,
     });
 
     this.wordsGroup.wallRight = new C.Body({
       mass: 0,
       shape: new C.Box(new C.Vec3(10, 100, 20)),
       position: new C.Vec3(35, -59, -10),
-      material: groundMat,
+      material: this.groundMat,
     });
 
     this.world.addBody(this.wordsGroup.ground);
@@ -164,42 +159,13 @@ export default class Renderer3D {
     this.world.addBody(this.wordsGroup.wallRight);
 
     for (let i = 0; i < this.textList.length; i++) {
-      const message = this.textList[i];
-
-      const geometry = new THREE.TextGeometry(message, {
-        font: fontsss,
-        size: 2,
-        height: 100000,
-        curveSegments: 24,
-        bevelEnabled: false,
-        bevelThickness: 0.9,
-        bevelSize: 0.3,
-        bevelOffset: 0,
-        bevelSegments: 10,
-      });
-
-      geometry.computeBoundingBox();
-      geometry.computeBoundingSphere();
-
-      const text = new THREE.Mesh(geometry, matLite);
-      this.wordsList.push(text);
-
-      text.position.set(0, 0, 0);
-      text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
-
-      const box = new C.Box(new C.Vec3().copy(text.size).scale(0.6));
-
-      text.body = new C.Body({
-        mass: 100,
-        position: new C.Vec3(-4 + (-1) ** i * 5, 6 * i, 0),
-        material: letterMat,
-      });
-
-      const { center } = text.geometry.boundingSphere;
-      text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
-
-      this.wordsGroup.add(text);
-      this.world.addBody(text.body);
+      this.addNewWord(
+        this.textList[i],
+        color,
+        { x: -4 + (-1) ** i * 5, y: 6 * i },
+        this.letterMat,
+        0
+      );
     }
 
     this.words.push(this.wordsGroup);
@@ -208,7 +174,6 @@ export default class Renderer3D {
       this.camera,
       this.renderer.domElement
     );
-    console.log(this.controls);
     this.scene.add(this.wordsGroup);
     this.addListeners();
   };
@@ -221,36 +186,40 @@ export default class Renderer3D {
     this.renderer.render(this.scene, this.camera);
   };
 
+  getCenterPoint = (mesh) => {
+    const geometry = mesh.geometry;
+    geometry.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geometry.boundingBox.getCenter(center);
+    mesh.localToWorld(center);
+    return center;
+  };
+
   updatePhisics = () => {
     if (!this.words) return;
     this.words[0].children.forEach((word) => {
       if (word.id !== this.draggingId) {
-        // console.log(word.quaternion);
+        const wordCenter = this.getCenterPoint(word);
+        word.body.position.set(word.body.position.x, word.body.position.y, 0);
+        word.body.quaternion.x = 0;
+        word.body.quaternion.y = 0;
         word.position.copy(word.body.position);
         word.quaternion.copy(word.body.quaternion);
-        word.position.z = 0;
-        word.rotation._x = 0;
-        word.rotation._y = 0;
-        word.rotation._z = 0;
-        // word.body.position.z = 0;
-        // word.body.quaternion._z = 0;
-        // word.quaternion._z = 0;
+        word.dragPlane.position.x = wordCenter.x;
+        word.dragPlane.position.y = wordCenter.y;
+        word.dragPlane.quaternion.copy(word.quaternion);
       } else {
+        word.position.copy(word.dragPlane.position);
         word.body.position.copy(word.position);
         word.body.quaternion.copy(word.quaternion);
         word.position.z = 0;
-        word.rotation._x = 0;
-        word.rotation._y = 0;
-        word.rotation._z = 0;
       }
     });
   };
 
-  addNewWord = () => {
+  addNewWord = (message, color, position, letterMat, planeOpacity) => {
     const fontsss = new THREE.Font(fontSculpt);
-    const letterMat = new C.Material();
 
-    const color = 0x9910ff;
     const matLite = new THREE.MeshBasicMaterial({
       color: color,
       transparent: true,
@@ -258,12 +227,10 @@ export default class Renderer3D {
       side: THREE.DoubleSide,
     });
 
-    const message = this.textList[0];
-
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 100000,
+      height: 10,
       curveSegments: 24,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -276,21 +243,38 @@ export default class Renderer3D {
     geometry.computeBoundingSphere();
 
     const text = new THREE.Mesh(geometry, matLite);
-    this.wordsList.push(text);
 
-    text.position.set(this.mouse.x * 30, this.mouse.y * 15, 0);
+    text.position.set(position.x, position.y, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
 
-    const box = new C.Box(new C.Vec3().copy(text.size).scale(0.6));
+    const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
 
     text.body = new C.Body({
       mass: 100,
-      position: new C.Vec3(this.mouse.x * 30, this.mouse.y * 15, 0),
+      position: new C.Vec3(position.x, position.y, 0),
       material: letterMat,
     });
 
     const { center } = text.geometry.boundingSphere;
     text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
+
+    const planeGeometry = new THREE.PlaneGeometry(
+      text.size.x + 1,
+      text.size.y + 1,
+      32
+    );
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      side: THREE.DoubleSide,
+      opacity: planeOpacity,
+    });
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    text.dragPlane = plane;
+    text.dragPlane.textId = text.id;
+
+    this.wordsList.push(text.dragPlane);
+    this.scene.add(plane);
 
     this.wordsGroup.add(text);
     this.world.addBody(text.body);
@@ -311,12 +295,16 @@ export default class Renderer3D {
   };
 
   handleClick = () => {
-    if (this.draggingId === null) {
-      const value = this.textList.pop();
-      this.textList.unshift(value);
-      this.words[0].children.pop();
-      this.world.bodies.pop();
-      this.addNewWord();
-    }
+    // const color = 0x9910ff;
+    // const message = this.textList[
+    //   Math.round(Math.random() * (this.textList.length - 1))
+    // ];
+    // this.addNewWord(
+    //   message,
+    //   color,
+    //   { x: this.mouse.x * 30, y: this.mouse.y * 15 },
+    //   this.letterMat,
+    //   0.1
+    // );
   };
 }
