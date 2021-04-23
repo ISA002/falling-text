@@ -1,6 +1,6 @@
 import * as THREE from "three";
 // import gsap from 'gsap';
-import fontSculpt from "../assets/fonts/sculpture.typeface.json";
+import fontSculpt from "../assets/fonts/splt.typeface.json";
 import { DragControls } from "three/examples/jsm/controls/DragControls";
 import C from "cannon";
 
