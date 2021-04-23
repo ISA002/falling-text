@@ -1,7 +1,7 @@
 import * as THREE from "three";
 // import gsap from 'gsap';
 import fontSculpt from "../assets/fonts/sculpture.typeface.json";
-import { DragControls } from 'three/examples/jsm/controls/DragControls';
+import { DragControls } from "three/examples/jsm/controls/DragControls";
 import C from "cannon";
 
 const distance = 15;
@@ -20,11 +20,41 @@ export default class Renderer3D {
     this.renderer.setClearColor(0x111111, 1);
     dom.appendChild(this.renderer.domElement);
 
-    this.textList = ["VISUAL", "JAVASCRIPT",
-    //  "THREE", "REACT", "CANNON", "VISUAL", "JAVASCRIPT",
-    //   "THREE", "REACT", "CANNON", "VISUAL", "JAVASCRIPT", "THREE", "REACT", "CANNON", "VISUAL",
-    //   "JAVASCRIPT", "VISUAL", "JAVASCRIPT", "THREE", "REACT", "CANNON", "VISUAL", "JAVASCRIPT", "THREE",
-    //   "REACT", "CANNON", "VISUAL", "JAVASCRIPT", "THREE", "REACT", "CANNON", "VISUAL", "JAVASCRIPT",
+    this.textList = [
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
     ];
 
     const aspect = this.width / this.height;
@@ -45,6 +75,7 @@ export default class Renderer3D {
     this.mouse = { x: 0, y: 0 };
 
     this.words = [];
+    this.wordsList = [];
     this.dragging = false;
     this.draggingId = null;
 
@@ -59,6 +90,18 @@ export default class Renderer3D {
     this.dom.addEventListener("mousemove", this.mouseEvent);
     this.dom.addEventListener("click", this.handleClick);
     window.addEventListener("resize", this.onResize);
+    this.controls.addEventListener("dragstart", (event) => {
+      this.draggingId = event.object.id;
+    });
+    this.controls.addEventListener("drag", (event) => {
+      console.log(event);
+      this.updatePhisics();
+      this.renderer.render(this.scene, this.camera);
+    });
+    this.controls.addEventListener("dragend", () => {
+      this.draggingId = null;
+    });
+    this.controls.activate();
   };
 
   mouseEvent = (e) => {
@@ -121,9 +164,9 @@ export default class Renderer3D {
     this.world.addBody(this.wordsGroup.wallRight);
 
     for (let i = 0; i < this.textList.length; i++) {
-      const VISUAL = this.textList[i];
+      const message = this.textList[i];
 
-      const geometry = new THREE.TextGeometry(VISUAL, {
+      const geometry = new THREE.TextGeometry(message, {
         font: fontsss,
         size: 2,
         height: 100000,
@@ -139,6 +182,7 @@ export default class Renderer3D {
       geometry.computeBoundingSphere();
 
       const text = new THREE.Mesh(geometry, matLite);
+      this.wordsList.push(text);
 
       text.position.set(0, 0, 0);
       text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
@@ -159,16 +203,19 @@ export default class Renderer3D {
     }
 
     this.words.push(this.wordsGroup);
-    this.controls = new DragControls(this.words, this.camera, this.renderer.domElement);
+    this.controls = new DragControls(
+      this.wordsList,
+      this.camera,
+      this.renderer.domElement
+    );
+    console.log(this.controls);
     this.scene.add(this.wordsGroup);
-    this.scene.add(this.controls);
     this.addListeners();
-    // });
   };
 
   render = () => {
-    this.updatePhisics();
     this.world.step(1 / 60);
+    this.updatePhisics();
 
     requestAnimationFrame(this.render);
     this.renderer.render(this.scene, this.camera);
@@ -176,15 +223,26 @@ export default class Renderer3D {
 
   updatePhisics = () => {
     if (!this.words) return;
-
     this.words[0].children.forEach((word) => {
-      if (word.id === this.draggingId) return;
-      word.position.copy(word.body.position);
-      word.quaternion.copy(word.body.quaternion);
-      word.position.z = 0;
-      word.rotation._z = 0;
-      word.rotation._y = 0;
-      word.rotation._x = 0;
+      if (word.id !== this.draggingId) {
+        // console.log(word.quaternion);
+        word.position.copy(word.body.position);
+        word.quaternion.copy(word.body.quaternion);
+        word.position.z = 0;
+        word.rotation._x = 0;
+        word.rotation._y = 0;
+        word.rotation._z = 0;
+        // word.body.position.z = 0;
+        // word.body.quaternion._z = 0;
+        // word.quaternion._z = 0;
+      } else {
+        word.body.position.copy(word.position);
+        word.body.quaternion.copy(word.quaternion);
+        word.position.z = 0;
+        word.rotation._x = 0;
+        word.rotation._y = 0;
+        word.rotation._z = 0;
+      }
     });
   };
 
@@ -200,12 +258,12 @@ export default class Renderer3D {
       side: THREE.DoubleSide,
     });
 
-    const VISUAL = this.textList[0];
+    const message = this.textList[0];
 
-    const geometry = new THREE.TextGeometry(VISUAL, {
+    const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 50000,
+      height: 100000,
       curveSegments: 24,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -218,6 +276,7 @@ export default class Renderer3D {
     geometry.computeBoundingSphere();
 
     const text = new THREE.Mesh(geometry, matLite);
+    this.wordsList.push(text);
 
     text.position.set(this.mouse.x * 30, this.mouse.y * 15, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
@@ -232,11 +291,10 @@ export default class Renderer3D {
 
     const { center } = text.geometry.boundingSphere;
     text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
-    text.addEventListener('drag', this.handleDrag)
 
     this.wordsGroup.add(text);
     this.world.addBody(text.body);
-  }
+  };
 
   onResize = () => {
     this.width = window.innerWidth;
@@ -253,7 +311,7 @@ export default class Renderer3D {
   };
 
   handleClick = () => {
-    if (!this.dragging) {
+    if (this.draggingId === null) {
       const value = this.textList.pop();
       this.textList.unshift(value);
       this.words[0].children.pop();
