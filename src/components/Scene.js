@@ -26,35 +26,35 @@ export default class Renderer3D {
       "THREE",
       "REACT",
       "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
     ];
 
     const aspect = this.width / this.height;
@@ -78,9 +78,12 @@ export default class Renderer3D {
     this.wordsList = [];
     this.dragging = false;
     this.draggingId = null;
+    this.planeOpacity = 0.1;
 
     this.world = new C.World();
     this.world.gravity.set(0, -20, 0);
+
+    this.raycaster = new THREE.Raycaster();
 
     this.addObjects();
     this.render();
@@ -88,10 +91,11 @@ export default class Renderer3D {
 
   addListeners = () => {
     this.dom.addEventListener("mousemove", this.mouseEvent);
-    this.dom.addEventListener("click", this.handleClick);
     window.addEventListener("resize", this.onResize);
     this.controls.addEventListener("dragstart", (event) => {
       this.draggingId = event.object.textId;
+      // this.controls.enabled = false;
+      // this.draggingId = event.object.id;
     });
     this.controls.addEventListener("drag", () => {
       this.updatePhisics();
@@ -99,7 +103,9 @@ export default class Renderer3D {
     });
     this.controls.addEventListener("dragend", () => {
       this.draggingId = null;
+      // this.controls.enabled = true;
     });
+    this.dom.addEventListener("click", this.handleClick);
   };
 
   mouseEvent = (e) => {
@@ -111,6 +117,7 @@ export default class Renderer3D {
     this.dom.removeEventListener("mousemove", this.mouseEvent);
     window.removeEventListener("resize", this.onResize);
     this.dom.removeEventListener("click", this.handleClick);
+    this.controls.deactivate();
   };
 
   addObjects = () => {
@@ -164,7 +171,7 @@ export default class Renderer3D {
         color,
         { x: -4 + (-1) ** i * 5, y: 6 * i },
         this.letterMat,
-        0
+        this.planeOpacity
       );
     }
 
@@ -180,6 +187,7 @@ export default class Renderer3D {
 
   render = () => {
     this.world.step(1 / 60);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
     this.updatePhisics();
 
     requestAnimationFrame(this.render);
@@ -188,8 +196,8 @@ export default class Renderer3D {
 
   getCenterPoint = (mesh) => {
     const geometry = mesh.geometry;
-    geometry.computeBoundingBox();
     const center = new THREE.Vector3();
+    geometry.computeBoundingBox();
     geometry.boundingBox.getCenter(center);
     mesh.localToWorld(center);
     return center;
@@ -212,7 +220,6 @@ export default class Renderer3D {
         word.position.copy(word.dragPlane.position);
         word.body.position.copy(word.position);
         word.body.quaternion.copy(word.quaternion);
-        word.position.z = 0;
       }
     });
   };
@@ -230,7 +237,7 @@ export default class Renderer3D {
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 10,
+      height: 1,
       curveSegments: 24,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -261,8 +268,12 @@ export default class Renderer3D {
     const planeGeometry = new THREE.PlaneGeometry(
       text.size.x + 1,
       text.size.y + 1,
-      32
+      10
     );
+
+    planeGeometry.computeBoundingBox();
+    planeGeometry.computeBoundingSphere();
+
     const planeMaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       transparent: true,
@@ -295,16 +306,19 @@ export default class Renderer3D {
   };
 
   handleClick = () => {
-    // const color = 0x9910ff;
-    // const message = this.textList[
-    //   Math.round(Math.random() * (this.textList.length - 1))
-    // ];
-    // this.addNewWord(
-    //   message,
-    //   color,
-    //   { x: this.mouse.x * 30, y: this.mouse.y * 15 },
-    //   this.letterMat,
-    //   0.1
-    // );
+    const intersects = this.raycaster.intersectObjects(this.scene.children);
+    if (intersects.length < 1) {
+      const color = 0x9910ff;
+      const message = this.textList[
+        Math.round(Math.random() * (this.textList.length - 1))
+      ];
+      this.addNewWord(
+        message,
+        color,
+        { x: this.mouse.x * 30, y: this.mouse.y * 15 },
+        this.letterMat,
+        this.planeOpacity
+      );
+    }
   };
 }
