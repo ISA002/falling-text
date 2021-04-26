@@ -78,7 +78,7 @@ export default class Renderer3D {
     this.wordsList = [];
     this.dragging = false;
     this.draggingId = null;
-    this.planeOpacity = 0.1;
+    this.planeOpacity = 0;
 
     this.world = new C.World();
     this.world.gravity.set(0, -20, 0);
@@ -237,7 +237,7 @@ export default class Renderer3D {
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 1,
+      height: 10,
       curveSegments: 24,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -257,7 +257,7 @@ export default class Renderer3D {
     const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
 
     text.body = new C.Body({
-      mass: 100,
+      mass: 0.01,
       position: new C.Vec3(position.x, position.y, 0),
       material: letterMat,
     });
