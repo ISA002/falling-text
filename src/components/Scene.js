@@ -26,11 +26,11 @@ export default class Renderer3D {
       "THREE",
       "REACT",
       "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
       // "VISUAL",
       // "JAVASCRIPT",
       // "THREE",
@@ -79,6 +79,9 @@ export default class Renderer3D {
     this.dragging = false;
     this.draggingId = null;
     this.planeOpacity = 0;
+    this.dragGroup = null;
+    this.dragEnd = false;
+    this.lastDraggingPossition = null;
 
     this.world = new C.World();
     this.world.gravity.set(0, -20, 0);
@@ -93,19 +96,19 @@ export default class Renderer3D {
     this.dom.addEventListener("mousemove", this.mouseEvent);
     window.addEventListener("resize", this.onResize);
     this.controls.addEventListener("dragstart", (event) => {
-      this.draggingId = event.object.textId;
-      // this.controls.enabled = false;
-      // this.draggingId = event.object.id;
+      this.draggingId = event.object.parentId;
+      this.dragGroup = this.wordsList.find((gr) => gr.id === this.draggingId);
     });
     this.controls.addEventListener("drag", () => {
       this.updatePhisics();
       this.renderer.render(this.scene, this.camera);
     });
     this.controls.addEventListener("dragend", () => {
-      this.draggingId = null;
-      // this.controls.enabled = true;
+      this.dragGroup = null;
+      this.dragEnd = true;
     });
     this.dom.addEventListener("click", this.handleClick);
+    this.controls.activate();
   };
 
   mouseEvent = (e) => {
@@ -181,6 +184,7 @@ export default class Renderer3D {
       this.camera,
       this.renderer.domElement
     );
+
     this.scene.add(this.wordsGroup);
     this.addListeners();
   };
@@ -196,7 +200,7 @@ export default class Renderer3D {
 
   getCenterPoint = (mesh) => {
     const geometry = mesh.geometry;
-    const center = new THREE.Vector3();
+    let center = new THREE.Vector3();
     geometry.computeBoundingBox();
     geometry.boundingBox.getCenter(center);
     mesh.localToWorld(center);
@@ -205,21 +209,41 @@ export default class Renderer3D {
 
   updatePhisics = () => {
     if (!this.words) return;
-    this.words[0].children.forEach((word) => {
-      if (word.id !== this.draggingId) {
-        const wordCenter = this.getCenterPoint(word);
+    this.words[0].children.forEach((group) => {
+      const word = group.children[1];
+      const plane = group.children[0];
+      if (this.dragEnd && group.id === this.draggingId) {
+        group.position.x = this.lastDraggingPossition.x;
+        group.position.y = this.lastDraggingPossition.y;
+        word.position.set(0, 0, 0);
+        let wordVector = new THREE.Vector3();
+        wordVector.setFromMatrixPosition(word.matrixWorld);
+        word.body.quaternion.copy(group.quaternion);
+        word.body.position.set(wordVector.x, wordVector.y, 0);
+        plane.position.set(word.size.x / 2, word.size.y / 2, 0);
+        word.body.velocity.set(0, 0, 0);
+        word.body.angularVelocity.set(0, 0, 0);
+
+        this.dragEnd = false;
+        this.draggingId = null;
+        this.lastDraggingPossition = null;
+      }
+      if (group.id !== this.draggingId) {
         word.body.position.set(word.body.position.x, word.body.position.y, 0);
         word.body.quaternion.x = 0;
         word.body.quaternion.y = 0;
-        word.position.copy(word.body.position);
-        word.quaternion.copy(word.body.quaternion);
-        word.dragPlane.position.x = wordCenter.x;
-        word.dragPlane.position.y = wordCenter.y;
-        word.dragPlane.quaternion.copy(word.quaternion);
+        group.position.copy(word.body.position);
+        group.quaternion.copy(word.body.quaternion);
       } else {
-        word.position.copy(word.dragPlane.position);
-        word.body.position.copy(word.position);
-        word.body.quaternion.copy(word.quaternion);
+        let vector = new THREE.Vector3();
+        vector.setFromMatrixPosition(plane.matrixWorld);
+        let wordVector = new THREE.Vector3();
+        wordVector.setFromMatrixPosition(word.matrixWorld);
+        this.lastDraggingPossition = vector;
+        word.position.x = plane.position.x - word.size.x / 2;
+        word.position.y = plane.position.y - word.size.y / 2;
+        word.body.position.set(wordVector.x, wordVector.y, 0);
+        word.body.quaternion.copy(group.quaternion);
       }
     });
   };
@@ -251,13 +275,13 @@ export default class Renderer3D {
 
     const text = new THREE.Mesh(geometry, matLite);
 
-    text.position.set(position.x, position.y, 0);
+    text.position.set(0, 0, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
 
     const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
 
     text.body = new C.Body({
-      mass: 0.01,
+      mass: 0.1,
       position: new C.Vec3(position.x, position.y, 0),
       material: letterMat,
     });
@@ -281,13 +305,22 @@ export default class Renderer3D {
       opacity: planeOpacity,
     });
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    text.dragPlane = plane;
-    text.dragPlane.textId = text.id;
+    plane.size = plane.geometry.boundingBox.getSize(new THREE.Vector3());
+    plane.position.set(center.x, center.y, 0);
 
-    this.wordsList.push(text.dragPlane);
-    this.scene.add(plane);
+    const textWithPlaneGroup = new THREE.Object3D();
+    textWithPlaneGroup.attach(plane);
+    textWithPlaneGroup.attach(text);
 
-    this.wordsGroup.add(text);
+    plane.textId = text.id;
+    plane.parentId = textWithPlaneGroup.id;
+
+    textWithPlaneGroup.position.set(position.x, position.y, 0);
+
+    this.wordsList.push(plane);
+    this.scene.add(textWithPlaneGroup);
+
+    this.wordsGroup.add(textWithPlaneGroup);
     this.world.addBody(text.body);
   };
 
@@ -306,8 +339,12 @@ export default class Renderer3D {
   };
 
   handleClick = () => {
-    const intersects = this.raycaster.intersectObjects(this.scene.children);
-    if (intersects.length < 1) {
+    const intersects = this.raycaster.intersectObjects(
+      this.scene.children,
+      true
+    );
+
+    if (intersects.length < 1 && !this.draggingId) {
       const color = 0x9910ff;
       const message = this.textList[
         Math.round(Math.random() * (this.textList.length - 1))
