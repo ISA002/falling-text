@@ -226,7 +226,6 @@ export default class Renderer3D {
 
         this.dragEnd = false;
         this.draggingId = null;
-        this.lastDraggingPossition = null;
       }
       if (group.id !== this.draggingId) {
         word.body.position.set(word.body.position.x, word.body.position.y, 0);
