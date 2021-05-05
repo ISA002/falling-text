@@ -4,6 +4,7 @@ import fontSculpt from "../assets/fonts/splt.typeface.json";
 import { DragControls } from "three/examples/jsm/controls/DragControls";
 import C from "cannon";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+
 import bookModel from "../assets/models/bookModel/book.obj";
 import bookTexture from "../assets/models/bookModel/livro_te.jpg";
 
@@ -17,7 +18,7 @@ export default class Renderer3D {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.scene = new THREE.Scene();
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, });
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setClearColor(0x111111, 1);
@@ -34,30 +35,14 @@ export default class Renderer3D {
       "THREE",
       "REACT",
       "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "VISUAL",
     ];
 
     const aspect = this.width / this.height;
@@ -71,10 +56,8 @@ export default class Renderer3D {
       100
     );
 
-    // this.camera.position.set(10, -10, 10);
     this.camera.position.set(0, 0, 10);
     this.camera.lookAt(new THREE.Vector3());
-    // this.time = 0;
 
     this.mouse = { x: 0, y: 0 };
 
@@ -82,18 +65,19 @@ export default class Renderer3D {
     this.wordsList = [];
     this.dragging = false;
     this.draggingId = null;
-    this.planeOpacity = 0.1;
+    this.planeOpacity = 0;
     this.dragGroup = null;
     this.dragEnd = false;
     this.lastDraggingPossition = null;
     this.model = null;
+    this.models = [];
+    this.mainCount = 0;
 
     this.world = new C.World();
     this.world.gravity.set(0, -30, 0);
 
     this.raycaster = new THREE.Raycaster();
 
-    // this.addObjects();
     this.startLoader();
     this.render();
   }
@@ -121,7 +105,7 @@ export default class Renderer3D {
   };
 
   changeView = (event) => {
-    if (event.keyCode === 32 && this.planeOpacity > 0) {
+    if (event.keyCode === 32) {
       this.camera.position.set(10, -10, 10);
       this.camera.lookAt(new THREE.Vector3(0, 0, 0));
     }
@@ -139,26 +123,29 @@ export default class Renderer3D {
 
   startLoader = () => {
     const textureLoader = new THREE.TextureLoader();
-    const texture = textureLoader.load(bookTexture);
     const loader = new OBJLoader();
-    loader.load(
-      bookModel,
-      (gltf) => {
-        this.model = gltf;
-        this.model.children[0].material.map = texture;
-        this.addObjects();
-      },
-      undefined,
-      function (error) {
-        console.error(error);
-      }
-    );
+    textureLoader.load(bookTexture, (tex) => {
+      loader.load(
+        bookModel,
+        (gltf) => {
+          this.model = gltf;
+          this.model.children[0].material.map = tex;
+          this.addObjects();
+        },
+        undefined,
+        function (error) {
+          console.error(error);
+        }
+      );
+    });
   };
 
   destroy = () => {
     this.dom.removeEventListener("mousemove", this.mouseEvent);
     window.removeEventListener("resize", this.onResize);
     this.dom.removeEventListener("click", this.handleClick);
+    window.removeEventListener("keydown", this.changeView);
+    window.removeEventListener("keyup", this.changeView2);
     this.controls.deactivate();
   };
 
@@ -173,7 +160,7 @@ export default class Renderer3D {
       this.groundMat,
       this.letterMat,
       {
-        friction: 0.01,
+        restitution: 0.01
       }
     );
 
@@ -192,14 +179,14 @@ export default class Renderer3D {
     this.wordsGroup.wallLeft = new C.Body({
       mass: 0,
       shape: new C.Box(new C.Vec3(10, 100, 20)),
-      position: new C.Vec3(-35, -59, -10),
+      position: new C.Vec3(-40, -59, -10),
       material: this.groundMat,
     });
 
     this.wordsGroup.wallRight = new C.Body({
       mass: 0,
       shape: new C.Box(new C.Vec3(10, 100, 20)),
-      position: new C.Vec3(35, -59, -10),
+      position: new C.Vec3(40, -59, -10),
       material: this.groundMat,
     });
 
@@ -273,6 +260,14 @@ export default class Renderer3D {
     const model = group.children[1];
     const box = group.children[0];
     if (this.dragEnd && group.id === this.draggingId) {
+      group.position.x = this.lastDraggingPossition.x;
+      group.position.y = this.lastDraggingPossition.y;
+      model.position.set(0, 0, 0);
+      let wordVector = new THREE.Vector3();
+      wordVector.setFromMatrixPosition(model.matrixWorld);
+      model.body.quaternion.copy(group.quaternion);
+      model.body.position.set(wordVector.x, wordVector.y, model.size.z / 2);
+      box.position.set(0, model.size.y / 2, 0);
       model.body.velocity.set(0, 0, 0);
       model.body.angularVelocity.set(0, 0, 0);
 
@@ -290,9 +285,8 @@ export default class Renderer3D {
       wordVector.setFromMatrixPosition(model.matrixWorld);
       this.lastDraggingPossition = vector;
 
-      model.position.x = box.position.x - model.size.x / 2;
-      model.position.y = box.position.y - model.size.y / 2;
-      // model.position.z = box.position.z - model.size.z / 2;
+      model.position.copy(box.position);
+      model.position.y -= model.size.y / 2;
       model.body.position.set(wordVector.x, wordVector.y, 2);
       model.body.quaternion.copy(group.quaternion);
     }
@@ -320,6 +314,7 @@ export default class Renderer3D {
       word.body.position.set(word.body.position.x, word.body.position.y, 0);
       word.body.quaternion.x = 0;
       word.body.quaternion.y = 0;
+      word.body.quaternion.normalize();
       group.position.copy(word.body.position);
       group.quaternion.copy(word.body.quaternion);
     } else {
@@ -361,6 +356,7 @@ export default class Renderer3D {
     geometry.computeBoundingSphere();
 
     const text = new THREE.Mesh(geometry, matLite);
+    // text.rotateZ(90)
 
     text.position.set(0, 0, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
@@ -375,6 +371,9 @@ export default class Renderer3D {
 
     const { center } = text.geometry.boundingSphere;
     text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
+
+    console.log(text.body);
+    // text.body.quaternion.set(0, 0, 0.3)
 
     const planeGeometry = new THREE.PlaneGeometry(
       text.size.x + 1,
@@ -414,14 +413,11 @@ export default class Renderer3D {
   };
 
   addNewModel = (startPos, material, opacity) => {
-    const mesh = this.model.children.pop();
-    const gr = this.model;
-    gr.clear();
+    const mesh = this.model.children[0].clone();
+    mesh.scale.set(0.1, 0.1, 0.1);
 
     if (mesh) {
-      console.log(gr);
       // gr.position.set(0, 0, 0);
-      gr.scale.set(0.1, 0.1, 0.1);
 
       mesh.geometry.computeBoundingBox();
       mesh.geometry.computeBoundingSphere();
@@ -478,8 +474,6 @@ export default class Renderer3D {
       modelWithBoxGroup.position.set(startPos.x, startPos.y, 0);
       modelWithBoxGroup.isModel = true;
 
-      console.log(modelWithBoxGroup);
-
       this.wordsList.push(boxDrag);
       this.scene.add(modelWithBoxGroup);
       this.world.addBody(mesh.body);
@@ -524,17 +518,31 @@ export default class Renderer3D {
     );
 
     if (intersects.length < 1 && !this.draggingId) {
-      const color = 0x9910ff;
-      const message = this.textList[
-        Math.round(Math.random() * (this.textList.length - 1))
-      ];
-      this.addNewWord(
-        message,
-        color,
-        { x: this.mouse.x * 30, y: this.mouse.y * 15 },
-        this.letterMat,
-        this.planeOpacity
-      );
+      this.words[0].children.shift();
+      
+      this.world.bodies.splice(3, 1);
+      console.log(this.world);
+      this.mainCount += 1;
+
+      if (this.mainCount % 3 === 0) {
+        this.addNewModel(
+          { x: this.mouse.x * 30, y: this.mouse.y * 15 },
+          this.letterMat,
+          this.planeOpacity
+        );
+      } else {
+        const color = 0xffffff;
+        const message = this.textList[
+          Math.round(Math.random() * (this.textList.length - 1))
+        ];
+        this.addNewWord(
+          message,
+          color,
+          { x: this.mouse.x * 30, y: this.mouse.y * 15 },
+          this.letterMat,
+          this.planeOpacity
+        );
+      }
     }
   };
 }
