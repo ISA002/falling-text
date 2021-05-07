@@ -1,3 +1,4 @@
+/* eslint-disable */
 import * as THREE from "three";
 // import gsap from 'gsap';
 import fontSculpt from "../assets/fonts/splt.typeface.json";
@@ -7,8 +8,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 
 import bookModel from "../assets/models/bookModel/book.obj";
 import bookTexture from "../assets/models/bookModel/livro_te.jpg";
-import CannonDebugRenderer from "./CannonDebugRenderer";
-import { throttle } from "lodash";
+// import CannonDebugRenderer from "./CannonDebugRenderer";
+// import { throttle } from "lodash";
 
 const distance = 15;
 // const totalMass = 1;
@@ -31,20 +32,20 @@ export default class Renderer3D {
       "JAVASCRIPT",
       "THREE",
       "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "THREE",
-      // "REACT",
-      // "CANNON",
-      // "VISUAL",
-      // "JAVASCRIPT",
-      // "VISUAL",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "THREE",
+      "REACT",
+      "CANNON",
+      "VISUAL",
+      "JAVASCRIPT",
+      "VISUAL",
     ];
 
     const aspect = this.width / this.height;
@@ -80,7 +81,7 @@ export default class Renderer3D {
 
     this.raycaster = new THREE.Raycaster();
 
-    this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.world);
+    // this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.world);
 
     this.startLoader();
     this.render();
@@ -231,7 +232,7 @@ export default class Renderer3D {
   };
 
   render = () => {
-    this.cannonDebugRenderer.update();
+    // this.cannonDebugRenderer.update();
     this.world.step(1 / 60);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     this.updatePhisics();
@@ -299,15 +300,16 @@ export default class Renderer3D {
   wordPhisics = (group) => {
     const word = group.children[1];
     const plane = group.children[0];
+    // const center = this.getCenterPoint(word);
     if (this.dragEnd && group.id === this.draggingId) {
       group.position.x = this.lastDraggingPossition.x;
       group.position.y = this.lastDraggingPossition.y;
-      word.position.set(0, 0, 0);
       let wordVector = new THREE.Vector3();
       wordVector.setFromMatrixPosition(word.matrixWorld);
+      word.position.set(-word.size.x / 2, -word.size.y / 2, 0);
       word.body.quaternion.copy(group.quaternion);
-      word.body.position.set(wordVector.x, wordVector.y, 0);
-      plane.position.set(word.size.x / 2, word.size.y / 2, 0);
+      word.body.position.set(group.position.x, group.position.y, 0);
+      plane.position.set(0, 0, 0);
       word.body.velocity.set(0, 0, 0);
       word.body.angularVelocity.set(0, 0, 0);
 
@@ -324,13 +326,11 @@ export default class Renderer3D {
     } else {
       let vector = new THREE.Vector3();
       vector.setFromMatrixPosition(plane.matrixWorld);
-      let wordVector = new THREE.Vector3();
-      wordVector.setFromMatrixPosition(word.matrixWorld);
       this.lastDraggingPossition = vector;
       word.position.x = plane.position.x - word.size.x / 2;
       word.position.y = plane.position.y - word.size.y / 2;
-      word.body.position.set(wordVector.x, wordVector.y, 0);
       word.body.quaternion.copy(group.quaternion);
+      word.body.position.set(vector.x, vector.y, 0);
     }
   };
 
@@ -347,7 +347,7 @@ export default class Renderer3D {
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 1,
+      height: 10,
       curveSegments: 64,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -359,13 +359,15 @@ export default class Renderer3D {
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
 
-
     const text = new THREE.Mesh(geometry, matLite);
     // text.position.set(0, 0, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
 
-
-    const boxxxgeometry = new THREE.BoxGeometry(text.size.x, text.size.y, text.size.z);
+    const boxxxgeometry = new THREE.BoxGeometry(
+      text.size.x,
+      text.size.y,
+      text.size.z
+    );
 
     boxxxgeometry.computeBoundingBox();
     boxxxgeometry.computeBoundingSphere();
@@ -392,18 +394,18 @@ export default class Renderer3D {
     // this.world.addBody(boxMesh.body);
     // this.wordsGroup.add(oup);
 
-
     // const box = new C.Box(new C.Vec3().copy(text.size));
-    const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
+    // const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
+    const { center } = text.geometry.boundingSphere;
 
+    text.position.set(-center.x, -center.y, -center.z);
     text.body = new C.Body({
       mass: 0.1,
       position: new C.Vec3(position.x, position.y, 0),
       material: letterMat,
     });
 
-    const { center } = text.geometry.boundingSphere;
-    text.body.addShape(boxxxx, new C.Vec3(c.x, c.y, c.z));
+    text.body.addShape(boxxxx, new C.Vec3(0, 0, 0));
     console.log(c, center);
 
     // text.body.quaternion.set(0, 0, 0.3)
@@ -427,7 +429,7 @@ export default class Renderer3D {
     });
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     plane.size = plane.geometry.boundingBox.getSize(new THREE.Vector3());
-    plane.position.set(center.x, center.y, 0);
+    plane.position.set(0, 0, 0);
 
     const textWithPlaneGroup = new THREE.Object3D();
     textWithPlaneGroup.attach(plane);

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import * as THREE from "three";
 import CANNON from "cannon";
 /**
@@ -86,7 +87,12 @@ CannonDebugRenderer.prototype = {
   },
   _createMesh(shape) {
     const material = this._material;
-    let geometry, geo, v0, v1, v2, mesh;
+    let geometry;
+    let geo; 
+    let v0;
+    let v1;
+    let v2;
+    let mesh;
     switch (shape.type) {
       case CANNON.Shape.types.SPHERE:
         mesh = new THREE.Mesh(this._sphereGeometry, material);
