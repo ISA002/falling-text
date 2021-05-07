@@ -7,6 +7,8 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 
 import bookModel from "../assets/models/bookModel/book.obj";
 import bookTexture from "../assets/models/bookModel/livro_te.jpg";
+import CannonDebugRenderer from "./CannonDebugRenderer";
+import { throttle } from "lodash";
 
 const distance = 15;
 // const totalMass = 1;
@@ -18,7 +20,7 @@ export default class Renderer3D {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.scene = new THREE.Scene();
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.width, this.height);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setClearColor(0x111111, 1);
@@ -29,20 +31,20 @@ export default class Renderer3D {
       "JAVASCRIPT",
       "THREE",
       "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "THREE",
-      "REACT",
-      "CANNON",
-      "VISUAL",
-      "JAVASCRIPT",
-      "VISUAL",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "THREE",
+      // "REACT",
+      // "CANNON",
+      // "VISUAL",
+      // "JAVASCRIPT",
+      // "VISUAL",
     ];
 
     const aspect = this.width / this.height;
@@ -78,6 +80,8 @@ export default class Renderer3D {
 
     this.raycaster = new THREE.Raycaster();
 
+    this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.world);
+
     this.startLoader();
     this.render();
   }
@@ -88,7 +92,6 @@ export default class Renderer3D {
     window.addEventListener("keyup", this.changeView2);
     window.addEventListener("resize", this.onResize);
     this.controls.addEventListener("dragstart", (event) => {
-      console.log(event.object);
       this.draggingId = event.object.parentId;
       this.dragGroup = this.wordsList.find((gr) => gr.id === this.draggingId);
     });
@@ -160,7 +163,7 @@ export default class Renderer3D {
       this.groundMat,
       this.letterMat,
       {
-        restitution: 0.01
+        restitution: 0.01,
       }
     );
 
@@ -228,6 +231,7 @@ export default class Renderer3D {
   };
 
   render = () => {
+    this.cannonDebugRenderer.update();
     this.world.step(1 / 60);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     this.updatePhisics();
@@ -343,8 +347,8 @@ export default class Renderer3D {
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 10,
-      curveSegments: 24,
+      height: 1,
+      curveSegments: 64,
       bevelEnabled: false,
       bevelThickness: 0.9,
       bevelSize: 0.3,
@@ -355,12 +359,41 @@ export default class Renderer3D {
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
 
-    const text = new THREE.Mesh(geometry, matLite);
-    // text.rotateZ(90)
 
-    text.position.set(0, 0, 0);
+    const text = new THREE.Mesh(geometry, matLite);
+    // text.position.set(0, 0, 0);
     text.size = text.geometry.boundingBox.getSize(new THREE.Vector3());
 
+
+    const boxxxgeometry = new THREE.BoxGeometry(text.size.x, text.size.y, text.size.z);
+
+    boxxxgeometry.computeBoundingBox();
+    boxxxgeometry.computeBoundingSphere();
+
+    const boxMesh = new THREE.Mesh(boxxxgeometry, matLite);
+    boxMesh.size = boxMesh.geometry.boundingBox.getSize(new THREE.Vector3());
+
+    const boxxxx = new C.Box(new C.Vec3().copy(boxMesh.size).scale(0.5));
+
+    boxMesh.body = new C.Body({
+      mass: 0.1,
+      position: new C.Vec3(position.x, position.y, 0),
+      material: letterMat,
+    });
+
+    const { center: c } = boxMesh.geometry.boundingSphere;
+    boxMesh.body.addShape(boxxxx, new C.Vec3(c.x, c.y, c.z));
+
+    // const oup = new THREE.Object3D();
+    // oup.isTest = true;
+    // oup.attach(boxMesh);
+
+    // this.scene.add(oup);
+    // this.world.addBody(boxMesh.body);
+    // this.wordsGroup.add(oup);
+
+
+    // const box = new C.Box(new C.Vec3().copy(text.size));
     const box = new C.Box(new C.Vec3().copy(text.size).scale(0.5));
 
     text.body = new C.Body({
@@ -370,9 +403,9 @@ export default class Renderer3D {
     });
 
     const { center } = text.geometry.boundingSphere;
-    text.body.addShape(box, new C.Vec3(center.x, center.y, center.z));
+    text.body.addShape(boxxxx, new C.Vec3(c.x, c.y, c.z));
+    console.log(c, center);
 
-    console.log(text.body);
     // text.body.quaternion.set(0, 0, 0.3)
 
     const planeGeometry = new THREE.PlaneGeometry(
@@ -403,7 +436,7 @@ export default class Renderer3D {
     plane.textId = text.id;
     plane.parentId = textWithPlaneGroup.id;
 
-    textWithPlaneGroup.position.set(position.x, position.y, 0);
+    // textWithPlaneGroup.position.set(position.x, position.y, 0);
 
     this.wordsList.push(plane);
     this.scene.add(textWithPlaneGroup);
@@ -519,9 +552,8 @@ export default class Renderer3D {
 
     if (intersects.length < 1 && !this.draggingId) {
       this.words[0].children.shift();
-      
+
       this.world.bodies.splice(3, 1);
-      console.log(this.world);
       this.mainCount += 1;
 
       if (this.mainCount % 3 === 0) {
