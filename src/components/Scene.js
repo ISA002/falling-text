@@ -75,9 +75,10 @@ export default class Renderer3D {
     this.model = null;
     this.models = [];
     this.mainCount = 0;
+    this.mass = 1
 
     this.world = new C.World();
-    this.world.gravity.set(0, -30, 0);
+    this.world.gravity.set(0, -25, 0);
 
     this.raycaster = new THREE.Raycaster();
 
@@ -164,7 +165,8 @@ export default class Renderer3D {
       this.groundMat,
       this.letterMat,
       {
-        restitution: 0.01,
+        restitution: 0,
+        friction: 1,
       }
     );
 
@@ -267,12 +269,12 @@ export default class Renderer3D {
     if (this.dragEnd && group.id === this.draggingId) {
       group.position.x = this.lastDraggingPossition.x;
       group.position.y = this.lastDraggingPossition.y;
-      model.position.set(0, 0, 0);
+      model.position.set(0, -model.size.y, 0);
       let wordVector = new THREE.Vector3();
       wordVector.setFromMatrixPosition(model.matrixWorld);
       model.body.quaternion.copy(group.quaternion);
-      model.body.position.set(wordVector.x, wordVector.y, model.size.z / 2);
-      box.position.set(0, model.size.y / 2, 0);
+      model.body.position.set(group.position.x, group.position.y, 1);
+      box.position.set(0, 0, 0);
       model.body.velocity.set(0, 0, 0);
       model.body.angularVelocity.set(0, 0, 0);
 
@@ -280,19 +282,17 @@ export default class Renderer3D {
       this.draggingId = null;
     }
     if (group.id !== this.draggingId) {
-      model.body.position.set(model.body.position.x, model.body.position.y, 2);
+      model.body.position.set(model.body.position.x, model.body.position.y, 1);
       group.position.copy(model.body.position);
       group.quaternion.copy(model.body.quaternion);
     } else {
       let vector = new THREE.Vector3();
       vector.setFromMatrixPosition(box.matrixWorld);
-      let wordVector = new THREE.Vector3();
-      wordVector.setFromMatrixPosition(model.matrixWorld);
       this.lastDraggingPossition = vector;
 
       model.position.copy(box.position);
-      model.position.y -= model.size.y / 2;
-      model.body.position.set(wordVector.x, wordVector.y, 2);
+      model.position.y -= model.size.y;
+      model.body.position.set(vector.x, vector.y, 1);
       model.body.quaternion.copy(group.quaternion);
     }
   };
@@ -300,12 +300,9 @@ export default class Renderer3D {
   wordPhisics = (group) => {
     const word = group.children[1];
     const plane = group.children[0];
-    // const center = this.getCenterPoint(word);
     if (this.dragEnd && group.id === this.draggingId) {
       group.position.x = this.lastDraggingPossition.x;
       group.position.y = this.lastDraggingPossition.y;
-      let wordVector = new THREE.Vector3();
-      wordVector.setFromMatrixPosition(word.matrixWorld);
       word.position.set(-word.size.x / 2, -word.size.y / 2, 0);
       word.body.quaternion.copy(group.quaternion);
       word.body.position.set(group.position.x, group.position.y, 0);
@@ -347,7 +344,7 @@ export default class Renderer3D {
     const geometry = new THREE.TextGeometry(message, {
       font: fontsss,
       size: 2,
-      height: 10,
+      height: 5,
       curveSegments: 64,
       bevelEnabled: false,
       bevelThickness: 0.9,
@@ -378,7 +375,7 @@ export default class Renderer3D {
     const boxxxx = new C.Box(new C.Vec3().copy(boxMesh.size).scale(0.5));
 
     boxMesh.body = new C.Body({
-      mass: 0.1,
+      mass: this.mass,
       position: new C.Vec3(position.x, position.y, 0),
       material: letterMat,
     });
@@ -406,7 +403,6 @@ export default class Renderer3D {
     });
 
     text.body.addShape(boxxxx, new C.Vec3(0, 0, 0));
-    console.log(c, center);
 
     // text.body.quaternion.set(0, 0, 0.3)
 
@@ -453,37 +449,32 @@ export default class Renderer3D {
 
     if (mesh) {
       // gr.position.set(0, 0, 0);
-
       mesh.geometry.computeBoundingBox();
       mesh.geometry.computeBoundingSphere();
 
-      mesh.position.set(0, 0, 0);
       mesh.size = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
 
       mesh.size = new THREE.Vector3(
-        mesh.size.x * 0.4,
-        mesh.size.y * 0.1,
-        mesh.size.z * 0.1
+        mesh.size.x * 0.5 * 0.4,
+        mesh.size.y * 0.5 * 0.1,
+        mesh.size.z * 0.5 * 0.1
       );
 
-      const box = new C.Box(new C.Vec3().copy(mesh.size).scale(0.5));
+      const boxSize = new C.Vec3().copy(mesh.size);
+      const box = new C.Box(boxSize);
 
       mesh.body = new C.Body({
-        mass: 0.1,
+        mass: this.mass,
         position: new C.Vec3(startPos.x, startPos.y, 0),
         material,
       });
 
-      const { center } = mesh.geometry.boundingSphere;
-      mesh.body.addShape(
-        box,
-        new C.Vec3(center.x * 0.4, center.y * 0.1, center.z * 0.1)
-      );
+      mesh.body.addShape(box, new C.Vec3(0, 0, 0));
 
       const boxGeometry = new THREE.BoxGeometry(
-        mesh.size.x + 1,
-        mesh.size.y + 1,
-        mesh.size.z + 1
+        mesh.size.x,
+        mesh.size.y,
+        mesh.size.z
       );
 
       boxGeometry.computeBoundingBox();
@@ -496,8 +487,9 @@ export default class Renderer3D {
         opacity,
       });
       const boxDrag = new THREE.Mesh(boxGeometry, boxMaterial);
+      boxDrag.scale.set(2, 2, 2);
       boxDrag.size = boxDrag.geometry.boundingBox.getSize(new THREE.Vector3());
-      boxDrag.position.set(center.x * 0.4, center.y * 0.1, center.z * 0.1);
+      mesh.position.set(0, -mesh.size.y, 0);
 
       const modelWithBoxGroup = new THREE.Object3D();
       modelWithBoxGroup.attach(boxDrag);
@@ -566,9 +558,8 @@ export default class Renderer3D {
         );
       } else {
         const color = 0xffffff;
-        const message = this.textList[
-          Math.round(Math.random() * (this.textList.length - 1))
-        ];
+        const message =
+          this.textList[Math.round(Math.random() * (this.textList.length - 1))];
         this.addNewWord(
           message,
           color,
