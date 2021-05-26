@@ -3,18 +3,18 @@ import * as THREE from "three";
 // import gsap from 'gsap';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import fontSculpt from "../assets/fonts/splt.typeface.json";
-import vertex from "./shader/vertex.glsl";
-import fragment from "./shader/fragment.glsl";
-import txr from "../assets/images/bg.png";
-import nx from "../assets/images/rainbow/high/nx.png";
-import ny from "../assets/images/rainbow/high/ny.png";
-import nz from "../assets/images/rainbow/high/nz.png";
-import px from "../assets/images/rainbow/high/px.png";
-import py from "../assets/images/rainbow/high/py.png";
-import pz from "../assets/images/rainbow/high/pz.png";
+// import vertex from "./shader/vertex.glsl";
+// import fragment from "./shader/fragment.glsl";
+// import txr from "../assets/images/bg.png";
+// import nx from "../assets/images/rainbow/high/nx.png";
+// import ny from "../assets/images/rainbow/high/ny.png";
+// import nz from "../assets/images/rainbow/high/nz.png";
+// import px from "../assets/images/rainbow/high/px.png";
+// import py from "../assets/images/rainbow/high/py.png";
+// import pz from "../assets/images/rainbow/high/pz.png";
 import rainbowHdr from "../assets/images/rainbow/untitled9.hdr";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
-import { LightProbeGenerator } from "three/examples/jsm/lights/LightProbeGenerator.js";
+// import { LightProbeGenerator } from "three/examples/jsm/lights/LightProbeGenerator.js";
 import { GUI } from "three/examples/jsm/libs/dat.gui.module.js";
 
 export default class Renderer3D {
@@ -149,39 +149,39 @@ export default class Renderer3D {
           transmission: API.transmission,
         });
 
-        material.onBeforeCompile = (shader) => {
-          shader.vertexShader = 'varying vec3 normalInterp;\n' + 'varying vec3 pos;\n' + shader.vertexShader
-          shader.fragmentShader = shader.fragmentShader.replace(
-            "#include <begin_vertex>",
-            [
-              "#include <begin_vertex>",
-              "vec4 pos4 = modelViewMatrix * vec4(position, 1.0);",
-              "normalInterp = normalMatrix * normal;",
-              "pos = vec3(pos4) / pos4.w;",
-            ].join("\n")
-          );
+        // material.onBeforeCompile = (shader) => {
+        //   shader.vertexShader = 'varying vec3 normalInterp;\n' + 'varying vec3 pos;\n' + shader.vertexShader
+        //   shader.fragmentShader = shader.fragmentShader.replace(
+        //     "#include <begin_vertex>",
+        //     [
+        //       "#include <begin_vertex>",
+        //       "vec4 pos4 = modelViewMatrix * vec4(position, 1.0);",
+        //       "normalInterp = normalMatrix * normal;",
+        //       "pos = vec3(pos4) / pos4.w;",
+        //     ].join("\n")
+        //   );
 
-          shader.fragmentShader = 'varying vec3 pos;\n' + 'varying vec3 normalInterp;\n' + 'uniform float bFlat;\n' + shader.fragmentShader
-          shader.fragmentShader = shader.fragmentShader.replace(
-            "gl_FragColor = vec4( outgoingLight, diffuseColor.a );",
-            [
-              "vec4 color = vec4(outgoingLight, diffuseColor.a);",
-              "vec3 n = mix(normalize(normalInterp), normalize(cross(dFdx(pos), dFdy(pos))), bFlat);",
-              "vec3 lightDir = normalize(vec3(200, 60, 100) - pos);",
-              "float lambertian = max(dot(lightDir, n), 0.0); float specular = 0.0;",
-              "if(lambertian > 0.0) { vec3 viewDir = normalize(-pos); vec3 halfDir = normalize(lightDir + viewDir); float specAngle = max(dot(halfDir, n), 0.0); specular = pow(specAngle, 16.0); }",
-              "vec4 ccc = vec4(vec3(0.2, 0.0, 0.0) + lambertian * vec3(0.5, 0.0, 0.0) + specular * outgoingLight, diffuseColor.a);",
-              "gl_FragColor = color;",
-            ].join("\n")
-          );
-          // console.log(shader.vertexShader);
-          // console.log(shader.fragmentShader);
-          material.userData.shader = shader;
-        };
+        //   shader.fragmentShader = 'varying vec3 pos;\n' + 'varying vec3 normalInterp;\n' + 'uniform float bFlat;\n' + shader.fragmentShader
+        //   shader.fragmentShader = shader.fragmentShader.replace(
+        //     "gl_FragColor = vec4( outgoingLight, diffuseColor.a );",
+        //     [
+        //       "vec4 color = vec4(outgoingLight, diffuseColor.a);",
+        //       "vec3 n = mix(normalize(normalInterp), normalize(cross(dFdx(pos), dFdy(pos))), bFlat);",
+        //       "vec3 lightDir = normalize(vec3(200, 60, 100) - pos);",
+        //       "float lambertian = max(dot(lightDir, n), 0.0); float specular = 0.0;",
+        //       "if(lambertian > 0.0) { vec3 viewDir = normalize(-pos); vec3 halfDir = normalize(lightDir + viewDir); float specAngle = max(dot(halfDir, n), 0.0); specular = pow(specAngle, 16.0); }",
+        //       "vec4 ccc = vec4(vec3(0.2, 0.0, 0.0) + lambertian * vec3(0.5, 0.0, 0.0) + specular * outgoingLight, diffuseColor.a);",
+        //       "gl_FragColor = color;",
+        //     ].join("\n")
+        //   );
+        //   // console.log(shader.vertexShader);
+        //   // console.log(shader.fragmentShader);
+        //   material.userData.shader = shader;
+        // };
 
-        material.customProgramCacheKey = () => {
-          return 2;
-        };
+        // material.customProgramCacheKey = () => {
+        //   return 2;
+        // };
 
         const letter = new THREE.Mesh(geometry, material);
 
