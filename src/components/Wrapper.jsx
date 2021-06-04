@@ -3,13 +3,15 @@ import React from "react";
 import "./Wrapper.css";
 import Scene from "./Scene";
 import SceneTwo from './SceneTwo';
+import SceneThree from './SceneThree';
 
 const Wrapper = () => {
   const ref = React.useRef(null);
 
   React.useEffect(() => {
     // const scene = new Scene(ref.current);
-    const scene = new SceneTwo(ref.current);
+    // const scene = new SceneTwo(ref.current);
+    const scene = new SceneThree(ref.current);
 
     return () => scene.destroy();
   }, [ref]);

@@ -2,81 +2,62 @@
 precision mediump float;
 #endif
 
-varying vec2 vUv;
-// uniform vec2 u_resolution;
-// uniform sampler2D u_txr;
-uniform samplerCube u_cubeMap;
+// uniform samplerCube envMap;
+uniform sampler2D backfaceMap;
+uniform vec2 u_resolution;
+uniform float frostedGlass;
 
-varying vec3 Normal;
-varying vec3 EyeDir;
+varying vec3 worldNormal;
+varying vec3 viewDirection;
 
-// vec3 rgb2hsb( in vec3 c ){
-//     vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
-//     vec4 p = mix(vec4(c.bg, K.wz),
-//                  vec4(c.gb, K.xy),
-//                  step(c.b, c.g));
-//     vec4 q = mix(vec4(p.xyw, c.r),
-//                  vec4(c.r, p.yzx),
-//                  step(p.x, c.r));
-//     float d = q.x - min(q.w, q.y);
-//     float e = 1.0e-10;
-//     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)),
-//                 d / (q.x + e),
-//                 q.x);
-// }
+varying vec3 l;
+varying vec3 v;
+varying vec3 n;
 
-// vec3 hsb2rgb( in vec3 c ){
-//     vec3 rgb = clamp(abs(mod(c.x*6.0+vec3(0.0,4.0,2.0),
-//                              6.0)-3.0)-1.0,
-//                      0.0,
-//                      1.0 );
-//     rgb = rgb*rgb*(3.0-2.0*rgb);
-//     return c.z * mix(vec3(1.0), rgb, c.y);
-// }
+varying vec3 l1;
 
-// float plot(vec2 st, float pct) {
-//   return smoothstep( pct-0.01, pct, st.y) - smoothstep( pct, pct+0.01, st.y);
-// }
+float fresnelFunc(vec3 viewDirection, vec3 normal) {
+  return pow(1.0 + dot(viewDirection, normal), 5.0);
+}
 
-// vec2 cubema(in vec3 t3) {
-//   vec2 t2;
-//   t3 = normalize(t3) / sqrt(2.0);
-//   vec3 q3=abs(t3);
-//   if ((q3.x>=q3.y)&&(q3.x>=q3.z)) {
-//     t2.x=0.5-t3.z/t3.x;
-//     t2.y=0.5-t3.y/q3.x;
-//   }
-//   else if ((q3.y>=q3.x)&&(q3.y>=q3.z)) {
-//     t2.x=0.5+t3.x/q3.y;
-//     t2.y=0.5+t3.z/t3.y;
-//   }
-//   else {
-//     t2.x=0.5+t3.x/t3.z;
-//     t2.y=0.5-t3.y/q3.z;
-//   }
-//   return t2;
-// }
+float ior = 1.500;
+float a = 0.66;
 
-void main(void) {
-  // vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-  // vec3 color = hsb2rgb(vec3(vUv.y, 1., 1.));
-  // vec3 co = mix(color, vec3(1., 0., 0.), vec3(vUv.x, vUv.y, vUv.x));
+void main (void)
+{
+  const vec4  diffColor = vec4 ( 0, 0, 0, 1.0 );
+  const vec4  diffColor1 = vec4(0.45, 0.49, 0.77, 1.);
+  const vec4  specColor = vec4 ( 1., 1., 1.0, 1.0 );
+  const float specPower = 30.0;
+  const float specPower1 = 60.0;
 
-  // co = mix(co,vec3(1.0,0.0,0.0),plot(vUv, vUv.x));
-  // co = mix(co,vec3(0.0,1.0,0.0),plot(vUv,vUv.x));
-  // co = mix(co,vec3(0.0,0.0,1.0),plot(vUv,vUv.x));
+  vec3 n2   = normalize ( n );
+  vec3 l2   = normalize ( l );
+  vec3 l22 = normalize ( l1 );
+  vec3 v2   = normalize ( v );
+  vec3 r    = reflect ( -v2, n2 );
 
-  // vec3 c = mix(color, vec3(0., 1., 0.), plot(vUv, vUv.x));
+  vec4 diff = diffColor * max ( dot ( n2, l2 ), 0.0 );
+  vec4 spec = specColor * pow ( max ( dot ( l2, r ), 0.0 ), specPower1 );
+  vec4 spec1 = diffColor1 * pow ( max ( dot ( l22, r ), 0.0 ), specPower );
 
-  // vec3 reflectedDirection = normalize(reflect(EyeDir, normalize(Normal)));
-  // reflectedDirection.y = -reflectedDirection.y;
-  // vec2 cub = cubema(u_txr);
-  // vec4 p = texture2D(u_txr, cub);
-  // vec4 fragColor = textureCube(u_cubeMap, reflectedDirection);
 
-  if (vUv.y < 0.6 && vUv.y > -0.6) {
-    gl_FragColor = vec4(0.38, 0.37, 0.44, 1);
-  } else {
-    gl_FragColor = vec4(0.61, 0.62, 0.61, 1);
-  }
+  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+
+  vec3 backfaceNormal = texture2D(backfaceMap, uv).rgb;
+  vec3 normal = worldNormal * (1.0 - a) - backfaceNormal * a;
+  // vec3 refracted = refract(viewDirection, normal, 1.0 / ior);
+
+  // ** //
+  // vec3 reflectColor = textureCube(envMap, normal).xyz;
+
+  vec4 rr = diff + spec + spec1;
+  // ** //
+  float fresnel = fresnelFunc(viewDirection, normal);
+  // vec4 refractColor = rr * max ( dot ( normal, worldNormal), 0.0 );
+  // float fresnel = 0.5;
+  vec4 result = mix(rr, vec4(frostedGlass), fresnel);
+  // vec3 result = mix(rr, vec4(1.0), fresnel);
+
+  gl_FragColor = vec4(result.x, result.y, result.z, 1.);
 }

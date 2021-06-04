@@ -44,7 +44,7 @@ export default class Renderer3D {
     // const lightt = new THREE.HemisphereLight(0xffffff, 0x000000, 1);
     // this.scene.add(lightt);
 
-    const cPosition = { x: 16, y: 4, z: 4 };
+    const cPosition = { x: -6, y: 3, z: 3 };
 
     // const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     // directionalLight.position.set(5, 5, 5);
@@ -90,7 +90,7 @@ export default class Renderer3D {
 
     const API = {
       metalness: 1,
-      roughness: 0.14,
+      roughness: 0.36,
       clearcoat: 0.34,
       clearcoatRoughness: 0.24,
       reflectivity: 0.5,
@@ -99,30 +99,46 @@ export default class Renderer3D {
       depthWrite: true,
       // ior: 1.5,
       transmission: 0,
-      color: 0x0e0f11,
+      color: 0x202020,
     };
 
     const GEOMETRY_API = {
       bevelThickness: 0.1,
-      bevelSize: 0.05,
+      bevelSize: 0.24,
       bevelOffset: 0,
       bevelSegments: 1,
     };
 
+    const LETTER_ROTATION = {
+      _x: 5.7,
+      _y: 3.1,
+      _z: 5.62,
+    };
+
     const LIGHT_POSITION = {
-      x: 5,
-      y: 5,
-      z: 5,
-      _x: 0,
+      x: -10.9,
+      y: -6,
+      z: -9.1,
+      _x: 1.06,
       _y: 0,
       _z: 0,
       color: 0x485270,
     };
 
+    const LIGHT_POSITION2 = {
+      x: -43,
+      y: 50,
+      z: -50,
+      _x: 0,
+      _y: 0,
+      _z: 0,
+      color: 0x223263,
+    };
+
     const geometry = new THREE.TextGeometry("T", {
       font: fontsss,
-      size: 10,
-      height: 3,
+      size: 30,
+      height: 6,
       curveSegments: 128,
       bevelEnabled: true,
       bevelThickness: GEOMETRY_API.bevelThickness,
@@ -139,24 +155,35 @@ export default class Renderer3D {
       LIGHT_POSITION.y,
       LIGHT_POSITION.z
     );
-
-    const rectLight2 = new THREE.RectAreaLight(0x223263, 5, 30, 30);
-    rectLight2.position.set(
-      LIGHT_POSITION.x,
-      LIGHT_POSITION.y,
-      LIGHT_POSITION.z - 90
-    );
     rectLight1.rotation.set(
       LIGHT_POSITION._x,
       LIGHT_POSITION._y,
       LIGHT_POSITION._z
     );
+
+    const rectLight2 = new THREE.RectAreaLight(
+      LIGHT_POSITION2.color,
+      10,
+      30,
+      30
+    );
+    rectLight2.position.set(
+      LIGHT_POSITION2.x,
+      LIGHT_POSITION2.y,
+      LIGHT_POSITION2.z
+    );
+    rectLight2.rotation.set(
+      LIGHT_POSITION2._x,
+      LIGHT_POSITION2._y,
+      LIGHT_POSITION2._z
+    );
+
     rectLight2.rotateY(pi);
     this.scene.add(rectLight1);
     this.scene.add(rectLight2);
 
-    this.scene.add(new RectAreaLightHelper(rectLight1));
-    this.scene.add(new RectAreaLightHelper(rectLight2));
+    // this.scene.add(new RectAreaLightHelper(rectLight1));
+    // this.scene.add(new RectAreaLightHelper(rectLight2));
 
     // const colors = [new THREE.Color(0xffffff), new THREE.Color(0xff0000)];
 
@@ -192,16 +219,38 @@ export default class Renderer3D {
 
     const letter = new THREE.Mesh(geometry, material);
 
-    letter.position.set(0, 0, 0);
-    letter.rotation.set(0, 0, 0);
+    letter.position.set(30, -2, -10);
+    letter.rotation.set(
+      LETTER_ROTATION._x,
+      LETTER_ROTATION._y,
+      LETTER_ROTATION._z
+    );
     this.scene.add(letter);
-    this.renderGui(letter, rectLight1, API, GEOMETRY_API, LIGHT_POSITION);
+    this.renderGui(
+      letter,
+      rectLight1,
+      rectLight2,
+      API,
+      GEOMETRY_API,
+      LIGHT_POSITION,
+      LIGHT_POSITION2,
+      LETTER_ROTATION
+    );
 
     this.addListeners();
     this.render();
   };
 
-  renderGui = (mesh, light, API, GEOMETRY_API, LIGHT_POSITION) => {
+  renderGui = (
+    mesh,
+    light,
+    light2,
+    API,
+    GEOMETRY_API,
+    LIGHT_POSITION,
+    LIGHT_POSITION2,
+    LETTER_ROTATION
+  ) => {
     const gui = new GUI();
     gui.width = 300;
     gui.domElement.style.userSelect = "none";
@@ -248,25 +297,68 @@ export default class Renderer3D {
             light.color.set(LIGHT_POSITION.color);
           });
       } else {
-        if (geometryApiArray[i][0] === '_') {
+        if (geometryApiArray[i][0] === "_") {
           fl1
-          .add(LIGHT_POSITION, geometryApiArray[i], 0, 2 * Math.PI, 0.02)
-          .name(geometryApiArray[i])
-          .onChange(() => {
-            console.log(LIGHT_POSITION[geometryApiArray[i][1]]);
-            light.rotation[geometryApiArray[i][1]] =
-              LIGHT_POSITION[geometryApiArray[i]];
-          });
+            .add(LIGHT_POSITION, geometryApiArray[i], 0, 2 * Math.PI, 0.02)
+            .name(geometryApiArray[i])
+            .onChange(() => {
+              light.rotation[geometryApiArray[i][1]] =
+                LIGHT_POSITION[geometryApiArray[i]];
+            });
         } else {
           fl1
-          .add(LIGHT_POSITION, geometryApiArray[i], -50, 50)
-          .name(geometryApiArray[i])
-          .onChange(function () {
-            light.position[geometryApiArray[i]] =
-              LIGHT_POSITION[geometryApiArray[i]];
-          }); 
+            .add(LIGHT_POSITION, geometryApiArray[i], -50, 50)
+            .name(geometryApiArray[i])
+            .onChange(function () {
+              light.position[geometryApiArray[i]] =
+                LIGHT_POSITION[geometryApiArray[i]];
+            });
         }
       }
+    }
+
+    const fl22 = gui.addFolder("light2");
+
+    const array = Object.keys(LIGHT_POSITION2);
+    for (let i = 0; i < array.length; i++) {
+      if (array[i] === "color") {
+        fl22
+          .addColor(API, "color")
+          .name(array[i])
+          .onChange(function () {
+            light2.color.set(LIGHT_POSITION2.color);
+          });
+      } else {
+        if (array[i][0] === "_") {
+          fl22
+            .add(LIGHT_POSITION2, array[i], 0, 2 * Math.PI, 0.02)
+            .name(array[i])
+            .onChange(() => {
+              light2.rotation[array[i][1]] =
+                LIGHT_POSITION2[array[i]];
+            });
+        } else {
+          fl22
+            .add(LIGHT_POSITION, geometryApiArray[i], -50, 50)
+            .name(geometryApiArray[i])
+            .onChange(function () {
+              light2.position[geometryApiArray[i]] =
+                LIGHT_POSITION[geometryApiArray[i]];
+            });
+        }
+      }
+    }
+
+    const fl2 = gui.addFolder("letter rotate");
+
+    const a = Object.keys(LETTER_ROTATION);
+    for (let i = 0; i < a.length; i++) {
+      fl2
+        .add(LETTER_ROTATION, a[i], 0, 2 * Math.PI, 0.02)
+        .name(a[i])
+        .onChange(() => {
+          mesh.rotation[a[i][1]] = LETTER_ROTATION[a[i]];
+        });
     }
 
     fl1.open();
