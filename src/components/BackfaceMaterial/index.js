@@ -5,6 +5,9 @@ import fragmentShader from "./fragment.glsl";
 export default class BackfaceMaterial extends ShaderMaterial {
   constructor(options) {
     super({
+      extensions: {
+        derivatives: "#extension GL_OES_standart_derivatives: enable",
+      },
       vertexShader,
       fragmentShader,
       side: BackSide,

@@ -141,6 +141,9 @@ export default class Renderer3D {
     });
 
     this.shaderMaterial = new THREE.ShaderMaterial({
+      extensions: {
+        derivatives: "#extension GL_OES_standart_derivatives: enable",
+      },
       uniforms: {
         u_resolution: {
           type: "v2",
