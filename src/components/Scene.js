@@ -8,6 +8,7 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 
 import bookModel from "../assets/models/bookModel/book.obj";
 import bookTexture from "../assets/models/bookModel/livro_te.jpg";
+import boxModel from "../assets/models/boxModel/3d-model.obj";
 // import CannonDebugRenderer from "./CannonDebugRenderer";
 // import { throttle } from "lodash";
 
@@ -75,7 +76,7 @@ export default class Renderer3D {
     this.model = null;
     this.models = [];
     this.mainCount = 0;
-    this.mass = 1
+    this.mass = 1;
 
     this.world = new C.World();
     this.world.gravity.set(0, -25, 0);
@@ -127,22 +128,35 @@ export default class Renderer3D {
   };
 
   startLoader = () => {
-    const textureLoader = new THREE.TextureLoader();
-    const loader = new OBJLoader();
-    textureLoader.load(bookTexture, (tex) => {
-      loader.load(
-        bookModel,
-        (gltf) => {
-          this.model = gltf;
-          this.model.children[0].material.map = tex;
-          this.addObjects();
-        },
-        undefined,
-        function (error) {
-          console.error(error);
-        }
-      );
+    const textureLoader = new THREE.TextureLoader().load(bookTexture, (tex) => {
+      const loader = new OBJLoader();
+      const models = [bookModel, boxModel];
+      let counter = 0;
+      for (let i = 0; i < 2; i++) {
+        // textureLoader.load(bookTexture, (tex) => {
+        loader.load(
+          models[i],
+          (gltf) => {
+            if (i === 0) {
+              this.model = gltf;
+              this.model.children[0].material.map = tex;
+            }
+            this.models.push(gltf);
+            counter += 1;
+
+            if (counter === 2) {
+              this.addObjects();
+            }
+          },
+          undefined,
+          function (error) {
+            console.error(error);
+          }
+        );
+        // });
+      }
     });
+    console.log(this.models);
   };
 
   destroy = () => {
@@ -200,13 +214,17 @@ export default class Renderer3D {
     this.world.addBody(this.wordsGroup.wallLeft);
     this.world.addBody(this.wordsGroup.wallRight);
 
+    const delta = this.models.length;
+    let counter = 0;
     for (let i = 0; i < this.textList.length; i++) {
       if (i % 3 === 0) {
         this.addNewModel(
           { x: -4 + (-1) ** i * 5, y: 6 * i },
           this.letterMat,
-          this.planeOpacity
+          this.planeOpacity,
+          this.models[counter]
         );
+        counter = (counter + 1) % delta;
       } else {
         this.addNewWord(
           this.textList[i],
@@ -443,38 +461,40 @@ export default class Renderer3D {
     this.world.addBody(text.body);
   };
 
-  addNewModel = (startPos, material, opacity) => {
-    const mesh = this.model.children[0].clone();
-    mesh.scale.set(0.1, 0.1, 0.1);
+  addNewModel = (startPos, material, opacity, modelGroup) => {
+    const model = modelGroup.clone();
+    model.scale.set(0.2, 0.2, 0.2);
 
-    if (mesh) {
-      // gr.position.set(0, 0, 0);
-      mesh.geometry.computeBoundingBox();
-      mesh.geometry.computeBoundingSphere();
+    if (model) {
+      const bbox = new THREE.Box3().setFromObject(model);
 
-      mesh.size = mesh.geometry.boundingBox.getSize(new THREE.Vector3());
-
-      mesh.size = new THREE.Vector3(
-        mesh.size.x * 0.5 * 0.4,
-        mesh.size.y * 0.5 * 0.1,
-        mesh.size.z * 0.5 * 0.1
+      model.size = new THREE.Vector3(
+        bbox.max.x - bbox.min.x,
+        bbox.max.y - bbox.min.y,
+        bbox.max.z - bbox.min.z
       );
 
-      const boxSize = new C.Vec3().copy(mesh.size);
+      model.size = new THREE.Vector3(
+        model.size.x * 0.5,
+        model.size.y * 0.5,
+        model.size.z * 0.5
+      );
+
+      const boxSize = new C.Vec3().copy(model.size);
       const box = new C.Box(boxSize);
 
-      mesh.body = new C.Body({
+      model.body = new C.Body({
         mass: this.mass,
         position: new C.Vec3(startPos.x, startPos.y, 0),
         material,
       });
 
-      mesh.body.addShape(box, new C.Vec3(0, 0, 0));
+      model.body.addShape(box, new C.Vec3(0, 0, 0));
 
       const boxGeometry = new THREE.BoxGeometry(
-        mesh.size.x,
-        mesh.size.y,
-        mesh.size.z
+        model.size.x,
+        model.size.y,
+        model.size.z
       );
 
       boxGeometry.computeBoundingBox();
@@ -489,13 +509,13 @@ export default class Renderer3D {
       const boxDrag = new THREE.Mesh(boxGeometry, boxMaterial);
       boxDrag.scale.set(2, 2, 2);
       boxDrag.size = boxDrag.geometry.boundingBox.getSize(new THREE.Vector3());
-      mesh.position.set(0, -mesh.size.y, 0);
+      model.position.set(0, -model.size.y, 0);
 
       const modelWithBoxGroup = new THREE.Object3D();
       modelWithBoxGroup.attach(boxDrag);
-      modelWithBoxGroup.attach(mesh);
+      modelWithBoxGroup.attach(model);
 
-      mesh.parentId = modelWithBoxGroup.id;
+      model.parentId = modelWithBoxGroup.id;
       boxDrag.parentId = modelWithBoxGroup.id;
 
       modelWithBoxGroup.position.set(startPos.x, startPos.y, 0);
@@ -503,26 +523,10 @@ export default class Renderer3D {
 
       this.wordsList.push(boxDrag);
       this.scene.add(modelWithBoxGroup);
-      this.world.addBody(mesh.body);
+      this.world.addBody(model.body);
       this.wordsGroup.add(modelWithBoxGroup);
     }
   };
-
-  // updateCOM = (body) => {
-  //   let com = new C.Vec3();
-  //   body.shapeOffsets.forEach((offset) => {
-  //     com.vadd(offset, com);
-  //   });
-  //   com.scale(1 / body.shapes.length, com);
-
-  //   body.shapeOffsets.forEach((offset) => {
-  //     offset.vsub(com, offset);
-  //   });
-
-  //   let worldCOM = new C.Vec3();
-  //   body.vectorToWorldFrame(com, worldCOM);
-  //   body.position.vadd(worldCOM, body.position);
-  // };
 
   onResize = () => {
     this.width = window.innerWidth;
@@ -554,7 +558,8 @@ export default class Renderer3D {
         this.addNewModel(
           { x: this.mouse.x * 30, y: this.mouse.y * 15 },
           this.letterMat,
-          this.planeOpacity
+          this.planeOpacity,
+          this.models[Math.round(Math.random() * this.models.length - 1)]
         );
       } else {
         const color = 0xffffff;
