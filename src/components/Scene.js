@@ -285,19 +285,21 @@ export default class Renderer3D {
     const model = group.children[1];
     const box = group.children[0];
     if (this.dragEnd && group.id === this.draggingId) {
-      group.position.x = this.lastDraggingPossition.x;
-      group.position.y = this.lastDraggingPossition.y;
-      model.position.set(0, -model.size.y, 0);
-      let wordVector = new THREE.Vector3();
-      wordVector.setFromMatrixPosition(model.matrixWorld);
-      model.body.quaternion.copy(group.quaternion);
-      model.body.position.set(group.position.x, group.position.y, 1);
-      box.position.set(0, 0, 0);
-      model.body.velocity.set(0, 0, 0);
-      model.body.angularVelocity.set(0, 0, 0);
+      if (this.lastDraggingPossition !== null) {
+        group.position.x = this.lastDraggingPossition.x;
+        group.position.y = this.lastDraggingPossition.y;
+        model.position.set(0, -model.size.y, 0);
+        let wordVector = new THREE.Vector3();
+        wordVector.setFromMatrixPosition(model.matrixWorld);
+        model.body.quaternion.copy(group.quaternion);
+        model.body.position.set(group.position.x, group.position.y, 1);
+        box.position.set(0, 0, 0);
+        model.body.velocity.set(0, 0, 0);
+        model.body.angularVelocity.set(0, 0, 0);
 
-      this.dragEnd = false;
-      this.draggingId = null;
+        this.dragEnd = false;
+        this.draggingId = null;
+      }
     }
     if (group.id !== this.draggingId) {
       model.body.position.set(model.body.position.x, model.body.position.y, 1);
@@ -319,17 +321,19 @@ export default class Renderer3D {
     const word = group.children[1];
     const plane = group.children[0];
     if (this.dragEnd && group.id === this.draggingId) {
-      group.position.x = this.lastDraggingPossition.x;
-      group.position.y = this.lastDraggingPossition.y;
-      word.position.set(-word.size.x / 2, -word.size.y / 2, 0);
-      word.body.quaternion.copy(group.quaternion);
-      word.body.position.set(group.position.x, group.position.y, 0);
-      plane.position.set(0, 0, 0);
-      word.body.velocity.set(0, 0, 0);
-      word.body.angularVelocity.set(0, 0, 0);
+      if (this.lastDraggingPossition !== null) {
+        group.position.x = this.lastDraggingPossition.x;
+        group.position.y = this.lastDraggingPossition.y;
+        word.position.set(-word.size.x / 2, -word.size.y / 2, 0);
+        word.body.quaternion.copy(group.quaternion);
+        word.body.position.set(group.position.x, group.position.y, 0);
+        plane.position.set(0, 0, 0);
+        word.body.velocity.set(0, 0, 0);
+        word.body.angularVelocity.set(0, 0, 0);
 
-      this.dragEnd = false;
-      this.draggingId = null;
+        this.dragEnd = false;
+        this.draggingId = null;
+      }
     }
     if (group.id !== this.draggingId) {
       word.body.position.set(word.body.position.x, word.body.position.y, 0);
@@ -555,11 +559,13 @@ export default class Renderer3D {
       this.mainCount += 1;
 
       if (this.mainCount % 3 === 0) {
+        const random = Math.round(Math.random() * (this.models.length - 1));
+
         this.addNewModel(
           { x: this.mouse.x * 30, y: this.mouse.y * 15 },
           this.letterMat,
           this.planeOpacity,
-          this.models[Math.round(Math.random() * this.models.length - 1)]
+          this.models[random]
         );
       } else {
         const color = 0xffffff;
